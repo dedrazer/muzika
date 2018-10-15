@@ -1,0 +1,12 @@
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\bin\Debug\View.dll
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\bin\Debug\View.pdb
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\bin\Debug\View.View.apk
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\bin\Debug\View.View-Signed.apk
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\obj\Debug\MuzikaClasses.csprojResolveAssemblyReference.cache
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\obj\Debug\MuzikaClasses.csproj.CoreCompileInputs.cache
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\obj\Debug\View.dll
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\obj\Debug\View.pdb
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\obj\Debug\android\bin\View.View.apk
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\obj\Debug\R.cs.flag
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\obj\Debug\uploadflags.txt
+D:\mmeli\Documents\Visual Studio 2017\Projects\Muzika\View\bin\Debug\View.dll.mdb
