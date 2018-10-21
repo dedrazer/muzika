@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27004.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Muzika", "Muzika\Muzika.csproj", "{4B8D57EA-FFCF-4C9A-ADA0-6F82CF6A3E81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuzikaClasses", "View\MuzikaClasses.csproj", "{4B6FA9BA-D461-4BFA-85D4-77460BEDD322}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MuzikaClasses", "MuzikaClasses\MuzikaClasses.csproj", "{4B6FA9BA-D461-4BFA-85D4-77460BEDD322}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

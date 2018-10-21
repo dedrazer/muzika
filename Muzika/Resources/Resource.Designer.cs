@@ -41,41 +41,60 @@ namespace Muzika
 			}
 		}
 		
+		public partial class Drawable
+		{
+			
+			// aapt resource value: 0x7f020000
+			public const int note = 2130837504;
+			
+			static Drawable()
+			{
+				global::Android.Runtime.ResourceIdManager.UpdateIdValues();
+			}
+			
+			private Drawable()
+			{
+			}
+		}
+		
 		public partial class Id
 		{
 			
-			// aapt resource value: 0x7f040002
-			public const int gl_Grid = 2130968578;
+			// aapt resource value: 0x7f05000a
+			public const int b_Play = 2131034122;
 			
-			// aapt resource value: 0x7f040001
-			public const int gl_GridDrawer = 2130968577;
+			// aapt resource value: 0x7f050002
+			public const int gl_Grid = 2131034114;
 			
-			// aapt resource value: 0x7f040000
-			public const int rl_Main = 2130968576;
+			// aapt resource value: 0x7f050001
+			public const int gl_GridDrawer = 2131034113;
 			
-			// aapt resource value: 0x7f040009
-			public const int tv_DrawAGrid = 2130968585;
+			// aapt resource value: 0x7f050000
+			public const int rl_Main = 2131034112;
 			
-			// aapt resource value: 0x7f040005
-			public const int tv_endX = 2130968581;
+			// aapt resource value: 0x7f050009
+			public const int tv_DrawAGrid = 2131034121;
 			
-			// aapt resource value: 0x7f040006
-			public const int tv_endY = 2130968582;
+			// aapt resource value: 0x7f050005
+			public const int tv_endX = 2131034117;
 			
-			// aapt resource value: 0x7f040004
-			public const int tv_startX = 2130968580;
+			// aapt resource value: 0x7f050006
+			public const int tv_endY = 2131034118;
 			
-			// aapt resource value: 0x7f040003
-			public const int tv_startY = 2130968579;
+			// aapt resource value: 0x7f050004
+			public const int tv_startX = 2131034116;
 			
-			// aapt resource value: 0x7f040007
-			public const int tv_x = 2130968583;
+			// aapt resource value: 0x7f050003
+			public const int tv_startY = 2131034115;
 			
-			// aapt resource value: 0x7f040008
-			public const int tv_y = 2130968584;
+			// aapt resource value: 0x7f050007
+			public const int tv_x = 2131034119;
 			
-			// aapt resource value: 0x7f04000a
-			public const int v_Overlay = 2130968586;
+			// aapt resource value: 0x7f050008
+			public const int tv_y = 2131034120;
+			
+			// aapt resource value: 0x7f05000b
+			public const int v_Overlay = 2131034123;
 			
 			static Id()
 			{
@@ -90,8 +109,8 @@ namespace Muzika
 		public partial class Layout
 		{
 			
-			// aapt resource value: 0x7f020000
-			public const int Main = 2130837504;
+			// aapt resource value: 0x7f030000
+			public const int Main = 2130903040;
 			
 			static Layout()
 			{
@@ -106,8 +125,17 @@ namespace Muzika
 		public partial class String
 		{
 			
-			// aapt resource value: 0x7f030000
-			public const int app_name = 2130903040;
+			// aapt resource value: 0x7f040000
+			public const int app_name = 2130968576;
+			
+			// aapt resource value: 0x7f040001
+			public const int cellOn = 2130968577;
+			
+			// aapt resource value: 0x7f040002
+			public const int cellX = 2130968578;
+			
+			// aapt resource value: 0x7f040003
+			public const int cellY = 2130968579;
 			
 			static String()
 			{
