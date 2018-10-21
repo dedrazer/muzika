@@ -22,7 +22,7 @@ namespace Muzika
         int drawingCellMagnitude, soundId;
         float startX, startY;
         GridLayout gl_Grid, gl_GridDrawer;
-        bool [,] cellValues;
+        bool[,] cellValues;
         OnLoadCompleteListener onLoadCompleteListener = new OnLoadCompleteListener();
         Point resolution = new Point();
         SoundPool sound;
@@ -291,20 +291,40 @@ namespace Muzika
                 if (senderImage.GetTag(Resource.String.cellOn) == null)
                 //activate cell
                 {
-                    senderImage.SetTag(Resource.String.cellOn, true);
-                    Bitmap activeCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell-active.png"));
-                    senderImage.SetImageBitmap(activeCellBitmap);
-                    cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = true;
+                    ActivateCell(senderImage);
+                    cellValues[(int)senderImage.GetTag(Resource.String.cellX), (int)senderImage.GetTag(Resource.String.cellY)] = true;
                 }
                 else
                 //deactivate cell
                 {
-                    senderImage.SetTag(Resource.String.cellOn, null);
-                    Bitmap cellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
-                    senderImage.SetImageBitmap(cellBitmap);
-                    cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = false;
+                    DeactivateCell(senderImage);
+                    cellValues[(int)senderImage.GetTag(Resource.String.cellX), (int)senderImage.GetTag(Resource.String.cellY)] = false;
                 }
             }
+        }
+
+        /// <summary>
+        /// graphically activate grid cell
+        /// </summary>
+        /// <param name="senderImage"></param>
+        private void ActivateCell(ImageView senderImage)
+        {
+            senderImage.SetTag(Resource.String.cellOn, true);
+            Bitmap activeCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell-active.png"));
+            senderImage.SetImageBitmap(activeCellBitmap);
+            cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = true;
+        }
+
+        /// <summary>
+        ///  graphically deactivate grid cell
+        /// </summary>
+        /// <param name="senderImage"></param>
+        private void DeactivateCell(ImageView senderImage)
+        {
+            senderImage.SetTag(Resource.String.cellOn, null);
+            Bitmap cellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
+            senderImage.SetImageBitmap(cellBitmap);
+            cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = false;
         }
 
         /// <summary>
@@ -321,6 +341,12 @@ namespace Muzika
                 {
                     sound.Play(soundId, 50, 50, 1, 1, 1);
                 }
+
+                //iterate cells
+                cellValues = CellularAutomata.Iterate(cellValues);
+
+                //update grid
+                SetGrid(cellValues);
             }
         }
         #endregion
@@ -334,6 +360,34 @@ namespace Muzika
             int statusBarHeight = Resources.GetDimensionPixelSize(resourceId);
 
             resolution = new Point(Application.Resources.DisplayMetrics.WidthPixels, Application.Resources.DisplayMetrics.HeightPixels - statusBarHeight);
+        }
+
+        /// <summary>
+        /// update GridLayout
+        /// </summary>
+        /// <param name="cellValues"></param>
+        private void SetGrid(bool[,] cellValues)
+        {
+            int width = cellValues.GetLength(0);
+            int height = cellValues.GetLength(1);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    ImageView cell = (ImageView)gl_Grid.GetChildAt((y * width) + x);
+                    if (cell.GetTag(Resource.String.cellOn) == null)
+                    {
+                        if (cellValues[x, y])
+                        {
+                            ActivateCell(cell);
+                        }
+                    }
+                    else if (!cellValues[x, y])
+                    {
+                        DeactivateCell(cell);
+                    }
+                }
+            }
         }
     }
 }
