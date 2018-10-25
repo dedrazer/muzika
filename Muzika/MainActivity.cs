@@ -17,12 +17,13 @@ namespace Muzika
     public class MainActivity : Activity
     {
         //declare variables
+        Bitmap deactivatedCellBitmap, activeCellBitmap;
         private bool isDrawAGridHidden = false;
+        bool[,] cellValues;
         Button b_Play;
         int drawingCellMagnitude, soundId;
         float startX, startY;
         GridLayout gl_Grid, gl_GridDrawer;
-        bool[,] cellValues;
         OnLoadCompleteListener onLoadCompleteListener = new OnLoadCompleteListener();
         Point resolution = new Point();
         SoundPool sound;
@@ -67,6 +68,9 @@ namespace Muzika
             tv_endY = FindViewById<TextView>(Resource.Id.tv_endY);
             gl_Grid = FindViewById<GridLayout>(Resource.Id.gl_Grid);
             b_Play = FindViewById<Button>(Resource.Id.b_Play);
+
+            activeCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell-active.png"));
+            deactivatedCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
 
             b_Play.Touch += new EventHandler<TouchEventArgs>(ButtonTouch);
 
@@ -310,7 +314,6 @@ namespace Muzika
         private void ActivateCell(ImageView senderImage)
         {
             senderImage.SetTag(Resource.String.cellOn, true);
-            Bitmap activeCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell-active.png"));
             senderImage.SetImageBitmap(activeCellBitmap);
             cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = true;
         }
@@ -322,8 +325,7 @@ namespace Muzika
         private void DeactivateCell(ImageView senderImage)
         {
             senderImage.SetTag(Resource.String.cellOn, null);
-            Bitmap cellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
-            senderImage.SetImageBitmap(cellBitmap);
+            senderImage.SetImageBitmap(deactivatedCellBitmap);
             cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = false;
         }
 
