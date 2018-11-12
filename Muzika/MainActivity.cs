@@ -26,7 +26,7 @@ namespace Muzika
         GridLayout gl_Grid, gl_GridDrawer;
         OnLoadCompleteListener onLoadCompleteListener = new OnLoadCompleteListener();
         Point resolution = new Point();
-        SoundPool sound;
+        List<SoundPool> sounds;
         TextView tv_x, tv_y, tv_startX, tv_startY, tv_endX, tv_endY;
         View v_Overlay;
 
@@ -36,9 +36,15 @@ namespace Muzika
 
             //load sounds
             SoundPool.Builder soundPoolBuilder = new SoundPool.Builder();
-            sound = soundPoolBuilder.Build();
-            sound.SetOnLoadCompleteListener(onLoadCompleteListener);
-            soundId = sound.Load(Assets.OpenFd("440.mp3"), 1);
+            sounds = new List<SoundPool>();
+            for (int i = 0; i < 144; i++)
+            {
+                SoundPool sound = soundPoolBuilder.Build();
+                sound.SetOnLoadCompleteListener(onLoadCompleteListener);
+                soundId = sound.Load(Assets.OpenFd("440.mp3"), 1);
+
+                sounds.Add(sound);
+            }
 
             //set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
@@ -172,8 +178,9 @@ namespace Muzika
                     tv_endX.Text = "end x: " + x;
                     tv_endY.Text = "end y: " + y;
 
-                    if (gridWidth > 0 && gridHeight > 0)
+                    if (gridWidth > 2 && gridHeight > 2)
                     //if grid was drawn, prepare it
+                    //minimum size 3x3
                     {
                         CheckResolution();
 
@@ -339,9 +346,23 @@ namespace Muzika
             if (e.Event.Action == MotionEventActions.Down)
             //only consider press
             {
-                if (onLoadCompleteListener.Loaded)
+                int n = 0;
+                //play grid
+                for (short yCell = 0; yCell < cellValues.GetLength(1); yCell++)
                 {
-                    sound.Play(soundId, 50, 50, 1, 1, 1);
+                    for (short xCell = 0; xCell < cellValues.GetLength(0); xCell++)
+                    {
+                        if (cellValues[xCell, yCell])
+                        {
+                            float frequency = Frequency.CalculateFrequency(yCell);
+
+                            if (onLoadCompleteListener.Loaded)
+                            {
+                                sounds[n].Play(soundId, 50, 50, 1, 0, frequency/440);
+                                n++;
+                            }
+                        }
+                    }
                 }
 
                 //iterate cells
