@@ -10,6 +10,9 @@ using Android.Util;
 using System.Collections.Generic;
 using Android.Media;
 using MuzikaClasses;
+using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Timers;
 
 namespace Muzika
 {
@@ -21,30 +24,18 @@ namespace Muzika
         private bool isDrawAGridHidden = false;
         bool[,] cellValues;
         Button b_Play;
-        int drawingCellMagnitude, soundId;
+        int drawingCellMagnitude;
         float startX, startY;
         GridLayout gl_Grid, gl_GridDrawer;
-        OnLoadCompleteListener onLoadCompleteListener = new OnLoadCompleteListener();
         Point resolution = new Point();
-        List<SoundPool> sounds;
+        short width, height, currentColumn;
+        Synthesizer synthesizer;
         TextView tv_x, tv_y, tv_startX, tv_startY, tv_endX, tv_endY;
         View v_Overlay;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-
-            //load sounds
-            SoundPool.Builder soundPoolBuilder = new SoundPool.Builder();
-            sounds = new List<SoundPool>();
-            for (int i = 0; i < 144; i++)
-            {
-                SoundPool sound = soundPoolBuilder.Build();
-                sound.SetOnLoadCompleteListener(onLoadCompleteListener);
-                soundId = sound.Load(Assets.OpenFd("440.mp3"), 1);
-
-                sounds.Add(sound);
-            }
 
             //set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
@@ -53,8 +44,8 @@ namespace Muzika
 
             CheckResolution();
 
-            //set grid cell magnitude
-            //to the smallest resolution attribute / 13
+            //define grid cell magnitude
+            //as the smallest resolution attribute / 13
             if (resolution.X > resolution.Y)
             {
                 drawingCellMagnitude = (int)Math.Floor((decimal)resolution.Y / 13);
@@ -140,8 +131,8 @@ namespace Muzika
                 }
 
                 //calculate number of cells
-                int gridWidth = (int)Math.Floor((decimal)width / drawingCellMagnitude);
-                int gridHeight = (int)Math.Floor((decimal)height / drawingCellMagnitude);
+                short gridWidth = (short)Math.Floor((decimal)width / drawingCellMagnitude);
+                short gridHeight = (short)Math.Floor((decimal)height / drawingCellMagnitude);
 
                 //calculate grid size
                 int pixelWidth = gridWidth * drawingCellMagnitude;
@@ -178,9 +169,9 @@ namespace Muzika
                     tv_endX.Text = "end x: " + x;
                     tv_endY.Text = "end y: " + y;
 
-                    if (gridWidth > 2 && gridHeight > 2)
+                    if (gridWidth > 1 && gridHeight > 2)
                     //if grid was drawn, prepare it
-                    //minimum size 3x3
+                    //minimum size 3x2
                     {
                         CheckResolution();
 
@@ -243,11 +234,16 @@ namespace Muzika
                         //define column count
                         gl_Grid.ColumnCount = gridWidth;
 
+                        //instantiate synthesizer
+                        synthesizer = new Synthesizer(Assets, gridHeight);
+
+                        this.width = gridWidth;
+                        this.height = gridHeight;
+
                         gl_Grid.Visibility = ViewStates.Visible;
+                        b_Play.Visibility = ViewStates.Visible;
                         v_Overlay.Visibility = ViewStates.Gone;
                     }
-
-                    b_Play.Visibility = ViewStates.Visible;
 
                     return;
                 }
@@ -323,6 +319,7 @@ namespace Muzika
             senderImage.SetTag(Resource.String.cellOn, true);
             senderImage.SetImageBitmap(activeCellBitmap);
             cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = true;
+            //Console.WriteLine("cell ({0}, {1}) is now on", Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY)));
         }
 
         /// <summary>
@@ -334,6 +331,7 @@ namespace Muzika
             senderImage.SetTag(Resource.String.cellOn, null);
             senderImage.SetImageBitmap(deactivatedCellBitmap);
             cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = false;
+            //Console.WriteLine("cell ({0}, {1}) is now off", Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY)));
         }
 
         /// <summary>
@@ -346,30 +344,19 @@ namespace Muzika
             if (e.Event.Action == MotionEventActions.Down)
             //only consider press
             {
-                int n = 0;
-                //play grid
-                for (short yCell = 0; yCell < cellValues.GetLength(1); yCell++)
-                {
-                    for (short xCell = 0; xCell < cellValues.GetLength(0); xCell++)
-                    {
-                        if (cellValues[xCell, yCell])
-                        {
-                            float frequency = Frequency.CalculateFrequency(yCell);
+                //b_Play.Visibility = ViewStates.Invisible;
 
-                            if (onLoadCompleteListener.Loaded)
-                            {
-                                sounds[n].Play(soundId, 50, 50, 1, 0, frequency/440);
-                                n++;
-                            }
-                        }
-                    }
-                }
+                currentColumn = 0;
 
-                //iterate cells
-                cellValues = CellularAutomata.Iterate(cellValues);
+                Timer metronome = new Timer();
 
-                //update grid
-                SetGrid(cellValues);
+                metronome.AutoReset = true;
+
+                metronome.Interval = 1000;
+
+                metronome.Elapsed += Tick;
+
+                metronome.Start();
             }
         }
         #endregion
@@ -389,29 +376,198 @@ namespace Muzika
         /// update GridLayout
         /// </summary>
         /// <param name="cellValues"></param>
-        private void SetGrid(bool[,] cellValues)
+        private void SetGrid(bool[,] newCellValues)
         {
-            int width = cellValues.GetLength(0);
-            int height = cellValues.GetLength(1);
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
+                    //get cell
                     ImageView cell = (ImageView)gl_Grid.GetChildAt((y * width) + x);
+
+                    //if cell is off
                     if (cell.GetTag(Resource.String.cellOn) == null)
                     {
-                        if (cellValues[x, y])
+                        //and cell value is to become on
+                        if (newCellValues[x, y])
                         {
+                            //activate the cell
                             ActivateCell(cell);
                         }
                     }
-                    else if (!cellValues[x, y])
+                    //if cell value should be off
+                    else if (!newCellValues[x, y])
                     {
+                        //make sure it is off
+                        ///OPTIMIZATION: do not update if already off
                         DeactivateCell(cell);
                     }
                 }
             }
         }
+
+        /// <summary>
+        /// update one GridLayout column
+        /// </summary>
+        /// <param name="cellValues"></param>
+        private void SetGridColumn(short column, bool[] newCellValues)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                //get cell
+                ImageView cell = (ImageView)gl_Grid.GetChildAt((y * width) + column);
+
+                //if cell is off
+                if (cell.GetTag(Resource.String.cellOn) == null)
+                {
+                    //and cell value is to become on
+                    if (newCellValues[y])
+                    {
+                        //activate the cell
+                        ActivateCell(cell);
+                    }
+                }
+                //if cell value should be off
+                else if (!newCellValues[y])
+                {
+                    //make sure it is off
+                    ///OPTIMIZATION: do not update if already off
+                    DeactivateCell(cell);
+                }
+            }
+        }
+
+        /// <summary>
+        /// play the current grid
+        /// </summary>
+        private void Play()
+        {
+            //play grid
+            for (short xCell = 0; xCell < width; xCell++)
+            {
+                for (short yCell = 0; yCell < height; yCell++)
+                {
+                    if (cellValues[xCell, yCell])
+                    {
+                        float frequency = Frequency.CalculateFrequency(yCell);
+
+                        synthesizer.Play(yCell);
+                    }
+                }
+
+                new System.Threading.ManualResetEvent(false).WaitOne(1000);
+                //System.Threading.Thread.Sleep(1000);//where x is the time in seconds for which you want app to wait
+                synthesizer.Stop();
+            }
+        }
+
+        /// <summary>
+        /// play the current grid
+        /// </summary>
+        private void Play(bool[,] iteratedGrid)
+        {
+            //play grid
+            for (short xCell = 0; xCell < width; xCell++)
+            {
+                for (short yCell = 0; yCell < height; yCell++)
+                {
+                    //get cell
+                    ImageView cell = (ImageView)gl_Grid.GetChildAt((yCell * width) + xCell);
+
+                    if (cellValues[xCell, yCell])
+                    {
+                        float frequency = Frequency.CalculateFrequency(yCell);
+
+                        synthesizer.Play(yCell);
+
+                        ActivateCell(cell);
+                    }
+                    else
+                    {
+                        DeactivateCell(cell);
+                    }
+                }
+
+                new System.Threading.ManualResetEvent(false).WaitOne(1000);
+                //System.Threading.Thread.Sleep(1000);//where x is the time in seconds for which you want app to wait
+                synthesizer.Stop();
+            }
+        }
+
+        /// <summary>
+        /// play one column of the grid
+        /// </summary>
+        private void PlayColumn(short xCell)
+        {
+            //play column
+            for (short yCell = 0; yCell < height; yCell++)
+            {
+                if (cellValues[xCell, yCell])
+                {
+                    synthesizer.Play(yCell);
+                }
+            }
+        }
+
+        /// <summary>
+        /// iterate cell values and update grid
+        /// </summary>
+        private void IterateGrid()
+        {
+            //iterate cells
+            cellValues = CellularAutomata.Iterate(cellValues);
+
+            //update grid
+            SetGrid(cellValues);
+        }
+
+        /// <summary>
+        /// explicitly iterate cell values and update grid
+        /// </summary>
+        private void IterateGrid(bool[,] cellValues)
+        {
+            //update grid
+            SetGrid(cellValues);
+        }
+
+        #region async
+        public void Tick(object sender, ElapsedEventArgs e)
+        {
+            synthesizer.Stop();
+
+            PlayColumn(currentColumn);
+            
+            currentColumn++;
+
+            if (currentColumn == width)
+            {
+                currentColumn = 0;
+                cellValues = CellularAutomata.Iterate(cellValues);
+                SetGrid(cellValues);
+            }
+        }
+
+        public async Task PlayGrid()
+        {
+            //play grid
+            for (short xCell = 0; xCell < width; xCell++)
+            {
+                for (short yCell = 0; yCell < height; yCell++)
+                {
+                    if (cellValues[xCell, yCell])
+                    {
+                        float frequency = Frequency.CalculateFrequency(yCell);
+
+                        synthesizer.Play(yCell);
+                    }
+                }
+
+                new System.Threading.ManualResetEvent(false).WaitOne(1000);
+                //System.Threading.Thread.Sleep(1000);//where x is the time in seconds for which you want app to wait
+                synthesizer.Stop();
+            }
+        }
+        #endregion
     }
 }
 

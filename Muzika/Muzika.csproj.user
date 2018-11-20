@@ -2,7 +2,7 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <SelectedDevice>Samsung SM-J500FN</SelectedDevice>
-    <DefaultDevice>Android_Accelerated_Nougat</DefaultDevice>
+    <DefaultDevice>Android_ARM_Nougat</DefaultDevice>
     <AndroidDesignerPreferredDevice>Nexus 4</AndroidDesignerPreferredDevice>
     <AndroidDesignerPreferredTheme>Theme.NoTitleBar</AndroidDesignerPreferredTheme>
   </PropertyGroup>
