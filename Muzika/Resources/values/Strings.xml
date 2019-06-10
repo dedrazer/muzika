@@ -4,4 +4,5 @@
   <string name="cellOn"></string>
   <string name="cellX"></string>
   <string name="cellY"></string>
+  <string name="cellZ"></string>
 </resources>

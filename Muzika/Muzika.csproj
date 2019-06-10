@@ -16,8 +16,7 @@
     <AndroidResgenFile>Resources\Resource.Designer.cs</AndroidResgenFile>
     <AndroidResgenClass>Resource</AndroidResgenClass>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <AndroidUseLatestPlatformSdk>True</AndroidUseLatestPlatformSdk>
-    <TargetFrameworkVersion>v7.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v8.0</TargetFrameworkVersion>
     <AndroidManifest>Properties\AndroidManifest.xml</AndroidManifest>
     <MonoAndroidResourcePrefix>Resources</MonoAndroidResourcePrefix>
     <MonoAndroidAssetsPrefix>Assets</MonoAndroidAssetsPrefix>
@@ -57,7 +56,6 @@
     <Reference Include="Mono.Android" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Frequency.cs" />
     <Compile Include="MainActivity.cs" />
     <Compile Include="Resources\Resource.Designer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -101,43 +99,52 @@
     <AndroidResource Include="Resources\drawable\note.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\220.mp3" />
+    <AndroidResource Include="Resources\drawable\play.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\233.08.mp3" />
+    <AndroidResource Include="Resources\drawable\pause.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\246.94.mp3" />
+    <AndroidResource Include="Resources\drawable\numeric.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\261.63.mp3" />
+    <AndroidResource Include="Resources\drawable\parallel.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\277.18.mp3" />
+    <AndroidResource Include="Resources\drawable\add.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\293.66.mp3" />
+    <AndroidResource Include="Resources\drawable\remove.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\311.13.mp3" />
+    <AndroidAsset Include="Assets\cell-playing.png" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\329.63.mp3" />
+    <AndroidAsset Include="Assets\perc\kick.mp3" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\349.23.mp3" />
+    <AndroidAsset Include="Assets\perc\snare.mp3" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\369.99.mp3" />
+    <AndroidAsset Include="Assets\perc\hat.mp3" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\392.mp3" />
+    <AndroidAsset Include="Assets\keys\0\A.mp3" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\415.30.mp3" />
+    <AndroidAsset Include="Assets\keys\0\sine.txt" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\keys\440.mp3" />
+    <AndroidAsset Include="Assets\keys\1\A.mp3" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\keys\1\spiritual.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidResource Include="Resources\drawable\unprogressive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidResource Include="Resources\drawable\progressive.png" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

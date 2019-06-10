@@ -6,32 +6,42 @@ using System;
 using Android.Views;
 using Android.Graphics;
 using static Android.Views.ViewGroup;
-using Android.Util;
-using System.Collections.Generic;
-using Android.Media;
 using MuzikaClasses;
-using System.Threading.Tasks;
-using System.Diagnostics;
 using System.Timers;
+using MuzikaClasses.Rules;
+using System.Collections.Generic;
+using Math = System.Math;
+using Exception = System.Exception;
 
 namespace Muzika
 {
     [Activity(Label = "Muzika", MainLauncher = true)]
     public class MainActivity : Activity
     {
-        //declare variables
-        Bitmap deactivatedCellBitmap, activeCellBitmap;
-        private bool isDrawAGridHidden = false;
-        bool[,] cellValues;
-        Button b_Play;
-        int drawingCellMagnitude;
-        float startX, startY;
-        GridLayout gl_Grid, gl_GridDrawer;
-        Point resolution = new Point();
-        short width, height, currentColumn;
-        Synthesizer synthesizer;
-        TextView tv_x, tv_y, tv_startX, tv_startY, tv_endX, tv_endY;
-        View v_Overlay;
+        #region Variables
+        Bitmap InactiveCellBitmap, ActiveCellBitmap, PlayingCellBitmap
+            , PauseBitmap, PlayBitmap
+            , ParallelBitmap, NumericBitmap
+            , ProgressiveBitmap, UnprogressiveBitmap;
+        bool Playing = false, Numeric = false, GridWiderThanScreen, Kick = true, progressive = true;
+        CellularAutomata<Rule30> chordProgressionGenerator;
+        ImageButton B_Play, B_Synth, B_Add, B_Remove, B_Progressive;
+        delegate void ToggleImageBitmap(Bitmap bitmap, bool value);
+        int DrawingCellMagnitude, CellMagnitude, GridPixelWidth, GridPixelHeight;
+        int[] ChordProgression;
+        float StartX, StartY, GridX, GridY;
+        GridLayout GL_GridDrawer;
+        List<bool[,]> CellValues;
+        List<CellularAutomata<LangtonsAnt>> _CellularAutomata;
+        List<GridLayout> GridLayouts;
+        Random _Random = new Random();
+        Point Resolution = new Point();
+        short Width, Height, CurrentColumn, NumberOfGrids = 0;
+        Synthesizer Synthesizer;
+        TextView TV_DrawAGrid, TV_X, TV_Y, TV_StartX, TV_StartY, TV_EndX, TV_EndY;
+        Timer Metronome;
+        View V_Overlay;
+        #endregion
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -40,39 +50,56 @@ namespace Muzika
             //set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
 
-            gl_GridDrawer = FindViewById<GridLayout>(Resource.Id.gl_GridDrawer);
+            GL_GridDrawer = FindViewById<GridLayout>(Resource.Id.gl_GridDrawer);
 
             CheckResolution();
 
             //define grid cell magnitude
             //as the smallest resolution attribute / 13
-            if (resolution.X > resolution.Y)
-            {
-                drawingCellMagnitude = (int)Math.Floor((decimal)resolution.Y / 13);
-            }
+            if (Resolution.X > Resolution.Y)
+                DrawingCellMagnitude = (int)Math.Floor((decimal)Resolution.Y / 13);
             else
-            {
-                drawingCellMagnitude = (int)Math.Floor((decimal)resolution.X / 13);
-            }
+                DrawingCellMagnitude = (int)Math.Floor((decimal)Resolution.X / 13);
 
             //initialize variables
-            v_Overlay = FindViewById<View>(Resource.Id.v_Overlay);
-            tv_x = FindViewById<TextView>(Resource.Id.tv_x);
-            tv_y = FindViewById<TextView>(Resource.Id.tv_y);
-            tv_startX = FindViewById<TextView>(Resource.Id.tv_startX);
-            tv_startY = FindViewById<TextView>(Resource.Id.tv_startY);
-            tv_endX = FindViewById<TextView>(Resource.Id.tv_endX);
-            tv_endY = FindViewById<TextView>(Resource.Id.tv_endY);
-            gl_Grid = FindViewById<GridLayout>(Resource.Id.gl_Grid);
-            b_Play = FindViewById<Button>(Resource.Id.b_Play);
+            V_Overlay = FindViewById<View>(Resource.Id.v_Overlay);
+            TV_DrawAGrid = FindViewById<TextView>(Resource.Id.tv_DrawAGrid);
+            TV_X = FindViewById<TextView>(Resource.Id.tv_x);
+            TV_Y = FindViewById<TextView>(Resource.Id.tv_y);
+            TV_StartX = FindViewById<TextView>(Resource.Id.tv_startX);
+            TV_StartY = FindViewById<TextView>(Resource.Id.tv_startY);
+            TV_EndX = FindViewById<TextView>(Resource.Id.tv_endX);
+            TV_EndY = FindViewById<TextView>(Resource.Id.tv_endY);
+            B_Play = FindViewById<ImageButton>(Resource.Id.b_Play);
+            B_Synth = FindViewById<ImageButton>(Resource.Id.b_Synth);
+            B_Add = FindViewById<ImageButton>(Resource.Id.b_Add);
+            B_Remove = FindViewById<ImageButton>(Resource.Id.b_Remove);
+            B_Progressive = FindViewById<ImageButton>(Resource.Id.b_Progressive);
 
-            activeCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell-active.png"));
-            deactivatedCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
+            GridLayouts = new List<GridLayout>
+            {
+                FindViewById<GridLayout>(Resource.Id.gl_Grid0),
+                FindViewById<GridLayout>(Resource.Id.gl_Grid1)
+            };
 
-            b_Play.Touch += new EventHandler<TouchEventArgs>(ButtonTouch);
+            ActiveCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell-active.png"));
+            InactiveCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
+            PlayingCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell-playing.png"));
+            PauseBitmap = BitmapFactory.DecodeResource(Resources, Resource.Drawable.pause);
+            PlayBitmap = BitmapFactory.DecodeResource(Resources, Resource.Drawable.play);
+            ParallelBitmap = BitmapFactory.DecodeResource(Resources, Resource.Drawable.parallel);
+            NumericBitmap = BitmapFactory.DecodeResource(Resources, Resource.Drawable.numeric);
+            ProgressiveBitmap = BitmapFactory.DecodeResource(Resources, Resource.Drawable.progressive);
+            UnprogressiveBitmap = BitmapFactory.DecodeResource(Resources, Resource.Drawable.unprogressive);
+
+            B_Play.Touch += new EventHandler<TouchEventArgs>(ButtonPlayTouch);
+            B_Synth.Touch += new EventHandler<TouchEventArgs>(ButtonSynthTouch);
+            B_Add.Touch += new EventHandler<TouchEventArgs>(ButtonAddTouch);
+            B_Remove.Touch += new EventHandler<TouchEventArgs>(ButtonRemoveTouch);
+            B_Progressive.Touch += new EventHandler<TouchEventArgs>(ButtonProgressiveTouch);
 
             //bind overlay touch event
-            v_Overlay.Touch += new EventHandler<TouchEventArgs>(OverlayTouch);
+            V_Overlay.Touch += new EventHandler<TouchEventArgs>(OverlayTouch);
         }
 
         #region Events
@@ -85,26 +112,16 @@ namespace Muzika
         {
             try
             {
-                if (!isDrawAGridHidden)
-                //hide prompt
-                {
-                    TextView tv_DrawAGrid = FindViewById<TextView>(Resource.Id.tv_DrawAGrid);
-
-                    MuzikaClasses.Display.Hide(tv_DrawAGrid);
-
-                    isDrawAGridHidden = true;
-                }
-
                 //record x and y
                 float x = e.Event.GetX();
                 float y = e.Event.GetY();
 
-                tv_x.Text = "x: " + x;
-                tv_y.Text = "y: " + y;
+                TV_X.Text = "x: " + x;
+                TV_Y.Text = "y: " + y;
 
                 //calculate width
-                int width = Convert.ToInt32(Math.Floor(x - startX));
-                int height = Convert.ToInt32(Math.Floor(y - startY));
+                int width = Convert.ToInt32(Math.Floor(x - StartX));
+                int height = Convert.ToInt32(Math.Floor(y - StartY));
 
                 bool negativeWidth = false;
                 bool negativeHeight = false;
@@ -121,143 +138,162 @@ namespace Muzika
                 }
 
                 //cap width
-                if (width > drawingCellMagnitude * 12)
+                if (width > DrawingCellMagnitude * 12)
                 {
-                    width = drawingCellMagnitude * 12;
+                    width = DrawingCellMagnitude * 12;
                 }
-                if (height > drawingCellMagnitude * 12)
+                if (height > DrawingCellMagnitude * 12)
                 {
-                    height = drawingCellMagnitude * 12;
+                    height = DrawingCellMagnitude * 12;
                 }
 
                 //calculate number of cells
-                short gridWidth = (short)Math.Floor((decimal)width / drawingCellMagnitude);
-                short gridHeight = (short)Math.Floor((decimal)height / drawingCellMagnitude);
+                short gridWidth = (short)Math.Floor((decimal)width / DrawingCellMagnitude);
+                short gridHeight = (short)Math.Floor((decimal)height / DrawingCellMagnitude);
 
                 //calculate grid size
-                int pixelWidth = gridWidth * drawingCellMagnitude;
-                int pixelHeight = gridHeight * drawingCellMagnitude;
+                int pixelWidth = gridWidth * DrawingCellMagnitude;
+                int pixelHeight = gridHeight * DrawingCellMagnitude;
 
                 //dynamic starting point for negative co-ordinates
                 if (negativeWidth)
                 {
-                    gl_GridDrawer.SetX(startX - pixelWidth);
+                    GL_GridDrawer.SetX(StartX - pixelWidth);
                 }
                 if (negativeHeight)
                 {
-                    gl_GridDrawer.SetY(startY - pixelHeight);
+                    GL_GridDrawer.SetY(StartY - pixelHeight);
                 }
 
                 if (e.Event.Action == MotionEventActions.Down)
                 //touch
                 {
-                    gl_GridDrawer.SetX(x);
-                    gl_GridDrawer.SetY(y);
-                    gl_GridDrawer.Visibility = ViewStates.Visible;
+                    GL_GridDrawer.SetX(x);
+                    GL_GridDrawer.SetY(y);
+                    GL_GridDrawer.Visibility = ViewStates.Visible;
 
-                    tv_startX.Text = "start x: " + x;
-                    tv_startY.Text = "start y: " + y;
+                    TV_StartX.Text = "start x: " + x;
+                    TV_StartY.Text = "start y: " + y;
 
-                    startX = x;
-                    startY = y;
+                    StartX = x;
+                    StartY = y;
                 }
                 else if (e.Event.Action == MotionEventActions.Up)
                 //release
                 {
-                    gl_GridDrawer.Visibility = ViewStates.Invisible;
+                    GL_GridDrawer.Visibility = ViewStates.Invisible;
 
-                    tv_endX.Text = "end x: " + x;
-                    tv_endY.Text = "end y: " + y;
+                    TV_EndX.Text = "end x: " + x;
+                    TV_EndY.Text = "end y: " + y;
 
                     if (gridWidth > 1 && gridHeight > 2)
                     //if grid was drawn, prepare it
                     //minimum size 3x2
                     {
+                        NumberOfGrids++;
+
                         CheckResolution();
 
                         //check logistics
-                        float screenAspect = (float)resolution.X / resolution.Y;
+                        float screenAspect = (float)Resolution.X / Resolution.Y;
                         float gridAspect = (float)gridWidth / gridHeight;
 
-                        int cellMagnitude;
+                        GridPixelWidth = (int)Math.Ceiling((decimal)Resolution.Y / gridHeight) * gridWidth;
+                        GridPixelHeight = (int)Math.Ceiling((decimal)Resolution.X / gridWidth) * gridHeight;
+
                         if (gridAspect > screenAspect)
                         //grid is wider than screen
                         {
-                            cellMagnitude = (int)Math.Ceiling((decimal)resolution.X / gridWidth);
-                            int gridPixelHeight = cellMagnitude * gridHeight;
+                            GridWiderThanScreen = true;
 
-                            gl_Grid.SetX(0);
-                            gl_Grid.SetY((resolution.Y - gridPixelHeight) / 2);
-                            LayoutParams layoutParams = gl_Grid.LayoutParameters;
+                            GridX = 0;
+                            GridY = (Resolution.Y - GridPixelHeight) / 2;
+
+                            GridLayouts[0].SetX(GridX);
+                            GridLayouts[0].SetY(GridY);
+                            LayoutParams layoutParams = GridLayouts[0].LayoutParameters;
                             layoutParams.Width = -1;
-                            layoutParams.Height = gridPixelHeight;
-                            gl_Grid.LayoutParameters = layoutParams;
+                            layoutParams.Height = GridPixelHeight;
+                            GridLayouts[0].LayoutParameters = layoutParams;
+
+                            CellMagnitude = (int)Math.Ceiling((decimal)Resolution.X / gridWidth);
                         }
                         else
                         //grid is thinner than screen
                         {
-                            cellMagnitude = (int)Math.Ceiling((decimal)resolution.Y / gridHeight);
-                            int gridPixelWidth = cellMagnitude * gridWidth;
+                            GridWiderThanScreen = false;
 
-                            gl_Grid.SetY(0);
-                            gl_Grid.SetX((resolution.X - gridPixelWidth) / 2);
-                            LayoutParams layoutParams = gl_Grid.LayoutParameters;
-                            layoutParams.Width = gridPixelWidth;
+                            GridX = (Resolution.X - GridPixelWidth) / 2;
+                            GridY = 0;
+
+                            GridLayouts[0].SetX(GridX);
+                            GridLayouts[0].SetY(GridY);
+                            LayoutParams layoutParams = GridLayouts[0].LayoutParameters;
+                            layoutParams.Width = GridPixelWidth;
                             layoutParams.Height = -1;
-                            gl_Grid.LayoutParameters = layoutParams;
+                            GridLayouts[0].LayoutParameters = layoutParams;
+
+                            CellMagnitude = (int)Math.Ceiling((decimal)Resolution.Y / gridHeight);
                         }
 
-                        gl_Grid.RemoveAllViews();
+                        GridLayouts[0].RemoveAllViews();
 
-                        LayoutParams gridCellLayoutParams = new LayoutParams(cellMagnitude, cellMagnitude);
-                        Bitmap gridCellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
+                        LayoutParams gridCellLayoutParams = new LayoutParams(CellMagnitude, CellMagnitude);
 
-                        cellValues = new bool[gridWidth, gridHeight];
+                        CellValues = new List<bool[,]>
+                        {
+                            new bool[gridWidth, gridHeight]
+                        };
                         //draw grid
                         for (int yCell = 0; yCell < gridHeight; yCell++)
                         {
                             for (int xCell = 0; xCell < gridWidth; xCell++)
                             {
-                                cellValues[xCell, yCell] = false;
+                                CellValues[0][xCell, yCell] = false;
                                 //define cell
                                 ImageView cell = new ImageView(this);
                                 cell.SetTag(Resource.String.cellOn, null);
                                 cell.SetTag(Resource.String.cellX, xCell);
                                 cell.SetTag(Resource.String.cellY, yCell);
                                 cell.Touch += new EventHandler<TouchEventArgs>(ToggleCell);
-                                cell.SetImageBitmap(gridCellBitmap);
+                                cell.SetImageBitmap(InactiveCellBitmap);
                                 cell.LayoutParameters = gridCellLayoutParams;
-                                gl_Grid.AddView(cell);
+                                GridLayouts[0].AddView(cell);
                             }
                         }
 
                         //define column count
-                        gl_Grid.ColumnCount = gridWidth;
+                        GridLayouts[0].ColumnCount = gridWidth;
 
                         //instantiate synthesizer
-                        synthesizer = new Synthesizer(Assets, gridHeight);
+                        Synthesizer = new Synthesizer(Assets, gridHeight);
 
-                        this.width = gridWidth;
-                        this.height = gridHeight;
+                        Width = gridWidth;
+                        Height = gridHeight;
 
-                        gl_Grid.Visibility = ViewStates.Visible;
-                        b_Play.Visibility = ViewStates.Visible;
-                        v_Overlay.Visibility = ViewStates.Gone;
+                        GridLayouts[0].Visibility = ViewStates.Visible;
+                        B_Play.Visibility = ViewStates.Visible;
+                        B_Synth.Visibility = ViewStates.Visible;
+                        B_Add.Visibility = ViewStates.Visible;
+                        B_Remove.Visibility = ViewStates.Visible;
+                        //B_Progressive.Visibility = ViewStates.Visible;
+                        V_Overlay.Visibility = ViewStates.Gone;
+                        TV_DrawAGrid.Visibility = ViewStates.Gone;
                     }
 
                     return;
                 }
 
                 //set grid drawer size
-                LayoutParams gridDrawerLayoutParams = gl_GridDrawer.LayoutParameters;
+                LayoutParams gridDrawerLayoutParams = GL_GridDrawer.LayoutParameters;
 
                 gridDrawerLayoutParams.Width = pixelWidth;
                 gridDrawerLayoutParams.Height = pixelHeight;
 
-                gl_GridDrawer.LayoutParameters = gridDrawerLayoutParams;
-                gl_GridDrawer.RemoveAllViews();
+                GL_GridDrawer.LayoutParameters = gridDrawerLayoutParams;
+                GL_GridDrawer.RemoveAllViews();
 
-                LayoutParams cellLayoutParams = new ViewGroup.LayoutParams(drawingCellMagnitude, drawingCellMagnitude);
+                LayoutParams cellLayoutParams = new LayoutParams(DrawingCellMagnitude, DrawingCellMagnitude);
                 Bitmap cellBitmap = BitmapFactory.DecodeStream(Assets.Open("cell.png"));
 
                 //draw grid
@@ -270,12 +306,13 @@ namespace Muzika
                         cell.SetBackgroundColor(Color.AliceBlue);
                         cell.SetImageBitmap(cellBitmap);
                         cell.LayoutParameters = cellLayoutParams;
-                        gl_GridDrawer.AddView(cell);
+                        cell.SetTag(Resource.String.cellZ, 0);
+                        GL_GridDrawer.AddView(cell);
                     }
                 }
 
                 //define column count
-                gl_GridDrawer.ColumnCount = gridWidth;
+                GL_GridDrawer.ColumnCount = gridWidth;
             }
             catch (Exception ex)
             {
@@ -294,18 +331,26 @@ namespace Muzika
             //only consider press
             {
                 ImageView senderImage = (ImageView)sender;
+                int x = (int)senderImage.GetTag(Resource.String.cellX);
+                int y = (int)senderImage.GetTag(Resource.String.cellY);
+                int z = (int)senderImage.GetTag(Resource.String.cellZ);
+
+                if (_CellularAutomata == null)
+                    InitiateCellularAutomata();
 
                 if (senderImage.GetTag(Resource.String.cellOn) == null)
                 //activate cell
                 {
                     ActivateCell(senderImage);
-                    cellValues[(int)senderImage.GetTag(Resource.String.cellX), (int)senderImage.GetTag(Resource.String.cellY)] = true;
+                    CellValues[z][x, y] = true;
+                    _CellularAutomata[z].SetCell(x, y, true);
                 }
                 else
                 //deactivate cell
                 {
                     DeactivateCell(senderImage);
-                    cellValues[(int)senderImage.GetTag(Resource.String.cellX), (int)senderImage.GetTag(Resource.String.cellY)] = false;
+                    CellValues[z][x, y] = false;
+                    _CellularAutomata[z].SetCell(x, y, false);
                 }
             }
         }
@@ -317,8 +362,7 @@ namespace Muzika
         private void ActivateCell(ImageView senderImage)
         {
             senderImage.SetTag(Resource.String.cellOn, true);
-            senderImage.SetImageBitmap(activeCellBitmap);
-            cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = true;
+            SetImage(senderImage, ActiveCellBitmap);
             //Console.WriteLine("cell ({0}, {1}) is now on", Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY)));
         }
 
@@ -329,9 +373,22 @@ namespace Muzika
         private void DeactivateCell(ImageView senderImage)
         {
             senderImage.SetTag(Resource.String.cellOn, null);
-            senderImage.SetImageBitmap(deactivatedCellBitmap);
-            cellValues[Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY))] = false;
+            SetImage(senderImage, InactiveCellBitmap);
             //Console.WriteLine("cell ({0}, {1}) is now off", Convert.ToInt32(senderImage.GetTag(Resource.String.cellX)), Convert.ToInt32(senderImage.GetTag(Resource.String.cellY)));
+        }
+
+        /// <summary>
+        /// safely set the image of a cell
+        /// </summary>
+        /// <param name="senderImage">ImageView to update</param>
+        /// <param name="value">new image</param>
+        private void SetImage(ImageView senderImage, Bitmap value)
+        {
+            void action()
+            {
+                senderImage.SetImageBitmap(value);
+            }
+            senderImage.Post(action);
         }
 
         /// <summary>
@@ -339,24 +396,130 @@ namespace Muzika
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void ButtonTouch(object sender, TouchEventArgs e)
+        private void ButtonPlayTouch(object sender, TouchEventArgs e)
         {
             if (e.Event.Action == MotionEventActions.Down)
             //only consider press
             {
                 //b_Play.Visibility = ViewStates.Invisible;
+                if (_CellularAutomata == null)
+                    InitiateCellularAutomata();
 
-                currentColumn = 0;
+                //Thread t = new Thread(CalculateChordProgression);
+                //t.Start();
+                CalculateChordProgression();
 
-                Timer metronome = new Timer();
+                if (Metronome == null)
+                {
+                    Metronome = new Timer
+                    {
+                        AutoReset = true,
+                        Interval = 500
+                    };
 
-                metronome.AutoReset = true;
+                    Metronome.Elapsed += Tick;
+                }
 
-                metronome.Interval = 1000;
+                if (Playing)
+                {
+                    Playing = false;
+                    Metronome.Stop();
+                    B_Play.SetImageBitmap(PlayBitmap);
+                }
+                else
+                {
+                    Playing = true;
+                    Metronome.Start();
+                    B_Play.SetImageBitmap(PauseBitmap);
+                }
 
-                metronome.Elapsed += Tick;
+            }
+        }
 
-                metronome.Start();
+        /// <summary>
+        /// initialize the Cellular Automata
+        /// </summary>
+        private void InitiateCellularAutomata()
+        {
+            _CellularAutomata = new List<CellularAutomata<LangtonsAnt>>();
+
+            for (short z = 0; z < NumberOfGrids; z++)
+            {
+                CellularAutomata<LangtonsAnt> _CA
+                    = new CellularAutomata<LangtonsAnt>(new CircularArray2D<bool>(CellValues[z]));
+                _CellularAutomata.Add(_CA);
+            }
+
+            CurrentColumn = 0;
+        }
+
+        /// <summary>
+        /// capture synth button touch event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonSynthTouch(object sender, TouchEventArgs e)
+        {
+            if (e.Event.Action == MotionEventActions.Down)
+            //only consider press
+            {
+                if (Numeric)
+                {
+                    Numeric = false;
+                    B_Synth.SetImageBitmap(ParallelBitmap);
+                }
+                else
+                {
+                    Numeric = true;
+                    B_Synth.SetImageBitmap(NumericBitmap);
+                }
+            }
+        }
+
+        /// <summary>
+        /// capture synth button touch event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonRemoveTouch(object sender, TouchEventArgs e)
+        {
+            if (e.Event.Action == MotionEventActions.Down)
+            //only consider press
+            {
+                RemoveGrid();
+            }
+        }
+
+        /// <summary>
+        /// capture synth button touch event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonAddTouch(object sender, TouchEventArgs e)
+        {
+            if (e.Event.Action == MotionEventActions.Down)
+            //only consider press
+            {
+                AddGrid();
+            }
+        }
+
+        /// <summary>
+        /// capture progressive button touch event
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonProgressiveTouch(object sender, TouchEventArgs e)
+        {
+            if (e.Event.Action == MotionEventActions.Down)
+            //only consider press
+            {
+                progressive = !progressive;
+
+                if (progressive)
+                    B_Progressive.SetImageBitmap(UnprogressiveBitmap);
+                else
+                    B_Progressive.SetImageBitmap(ProgressiveBitmap);
             }
         }
         #endregion
@@ -369,205 +532,492 @@ namespace Muzika
             int resourceId = Resources.GetIdentifier("status_bar_height", "dimen", "android");
             int statusBarHeight = Resources.GetDimensionPixelSize(resourceId);
 
-            resolution = new Point(Application.Resources.DisplayMetrics.WidthPixels, Application.Resources.DisplayMetrics.HeightPixels - statusBarHeight);
+            Resolution = new Point(Application.Resources.DisplayMetrics.WidthPixels, Application.Resources.DisplayMetrics.HeightPixels - statusBarHeight);
         }
 
         /// <summary>
         /// update GridLayout
         /// </summary>
         /// <param name="cellValues"></param>
-        private void SetGrid(bool[,] newCellValues)
+        private void SetGrids(List<bool[,]> newCellValues)
         {
-            for (int y = 0; y < height; y++)
+            for (int y = 0; y < Height; y++)
             {
-                for (int x = 0; x < width; x++)
+                for (int x = 0; x < Width; x++)
                 {
-                    //get cell
-                    ImageView cell = (ImageView)gl_Grid.GetChildAt((y * width) + x);
-
-                    //if cell is off
-                    if (cell.GetTag(Resource.String.cellOn) == null)
+                    for (int z = 0; z < NumberOfGrids; z++)
                     {
-                        //and cell value is to become on
-                        if (newCellValues[x, y])
+                        //get cell
+                        ImageView cell = (ImageView)GridLayouts[z].GetChildAt((y * Width) + x);
+
+                        //if cell is off
+                        if (cell.GetTag(Resource.String.cellOn) == null)
                         {
-                            //activate the cell
-                            ActivateCell(cell);
+                            //and cell value is to become on
+                            if (newCellValues[z][x, y])
+                            {
+                                //activate the cell
+                                ActivateCell(cell);
+                            }
+                        }
+                        //if cell value should be off
+                        else if (!newCellValues[z][x, y])
+                        {
+                            //make sure it is off
+                            ///OPTIMIZATION: do not update if already off
+                            DeactivateCell(cell);
                         }
                     }
-                    //if cell value should be off
-                    else if (!newCellValues[x, y])
-                    {
-                        //make sure it is off
-                        ///OPTIMIZATION: do not update if already off
-                        DeactivateCell(cell);
-                    }
                 }
             }
         }
 
         /// <summary>
-        /// update one GridLayout column
-        /// </summary>
-        /// <param name="cellValues"></param>
-        private void SetGridColumn(short column, bool[] newCellValues)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                //get cell
-                ImageView cell = (ImageView)gl_Grid.GetChildAt((y * width) + column);
-
-                //if cell is off
-                if (cell.GetTag(Resource.String.cellOn) == null)
-                {
-                    //and cell value is to become on
-                    if (newCellValues[y])
-                    {
-                        //activate the cell
-                        ActivateCell(cell);
-                    }
-                }
-                //if cell value should be off
-                else if (!newCellValues[y])
-                {
-                    //make sure it is off
-                    ///OPTIMIZATION: do not update if already off
-                    DeactivateCell(cell);
-                }
-            }
-        }
-
-        /// <summary>
-        /// play the current grid
-        /// </summary>
-        private void Play()
-        {
-            //play grid
-            for (short xCell = 0; xCell < width; xCell++)
-            {
-                for (short yCell = 0; yCell < height; yCell++)
-                {
-                    if (cellValues[xCell, yCell])
-                    {
-                        float frequency = Frequency.CalculateFrequency(yCell);
-
-                        synthesizer.Play(yCell);
-                    }
-                }
-
-                new System.Threading.ManualResetEvent(false).WaitOne(1000);
-                //System.Threading.Thread.Sleep(1000);//where x is the time in seconds for which you want app to wait
-                synthesizer.Stop();
-            }
-        }
-
-        /// <summary>
-        /// play the current grid
-        /// </summary>
-        private void Play(bool[,] iteratedGrid)
-        {
-            //play grid
-            for (short xCell = 0; xCell < width; xCell++)
-            {
-                for (short yCell = 0; yCell < height; yCell++)
-                {
-                    //get cell
-                    ImageView cell = (ImageView)gl_Grid.GetChildAt((yCell * width) + xCell);
-
-                    if (cellValues[xCell, yCell])
-                    {
-                        float frequency = Frequency.CalculateFrequency(yCell);
-
-                        synthesizer.Play(yCell);
-
-                        ActivateCell(cell);
-                    }
-                    else
-                    {
-                        DeactivateCell(cell);
-                    }
-                }
-
-                new System.Threading.ManualResetEvent(false).WaitOne(1000);
-                //System.Threading.Thread.Sleep(1000);//where x is the time in seconds for which you want app to wait
-                synthesizer.Stop();
-            }
-        }
-
-        /// <summary>
-        /// play one column of the grid
+        /// play one column of the grids
         /// </summary>
         private void PlayColumn(short xCell)
         {
-            //play column
-            for (short yCell = 0; yCell < height; yCell++)
+            if ((Width * NumberOfGrids) % 2 == 0)
             {
-                if (cellValues[xCell, yCell])
+                //play kick on root note
+                if (xCell == 0)
+                    Synthesizer.Kick();
+
+                if (xCell == (float)(Width * NumberOfGrids) / 2)
+                    Synthesizer.Snare();
+                else
+                    Synthesizer.Hat();
+            }
+            else
+            {
+                //play kick on root note
+                if (xCell == 0 && Kick)
                 {
-                    synthesizer.Play(yCell);
+                    Synthesizer.Kick();
+                    Kick = !Kick;
+                    Synthesizer.Hat();
                 }
-            }
-        }
-
-        /// <summary>
-        /// iterate cell values and update grid
-        /// </summary>
-        private void IterateGrid()
-        {
-            //iterate cells
-            cellValues = CellularAutomata.Iterate(cellValues);
-
-            //update grid
-            SetGrid(cellValues);
-        }
-
-        /// <summary>
-        /// explicitly iterate cell values and update grid
-        /// </summary>
-        private void IterateGrid(bool[,] cellValues)
-        {
-            //update grid
-            SetGrid(cellValues);
-        }
-
-        #region async
-        public void Tick(object sender, ElapsedEventArgs e)
-        {
-            synthesizer.Stop();
-
-            PlayColumn(currentColumn);
-            
-            currentColumn++;
-
-            if (currentColumn == width)
-            {
-                currentColumn = 0;
-                cellValues = CellularAutomata.Iterate(cellValues);
-                SetGrid(cellValues);
-            }
-        }
-
-        public async Task PlayGrid()
-        {
-            //play grid
-            for (short xCell = 0; xCell < width; xCell++)
-            {
-                for (short yCell = 0; yCell < height; yCell++)
+                else if (xCell == 0)
                 {
-                    if (cellValues[xCell, yCell])
-                    {
-                        float frequency = Frequency.CalculateFrequency(yCell);
+                    Synthesizer.Snare();
+                    Kick = !Kick;
+                }
+                else
+                    Synthesizer.Hat();
 
-                        synthesizer.Play(yCell);
+            }
+
+            //divide grids
+            int z = 0;
+
+            //determine grid
+            while (xCell >= Width)
+            {
+                z++;
+                xCell -= Width;
+            }
+
+            //play column
+            if (Numeric)
+            {
+                short key = Numbers.Zero;
+
+                for (short yCell = 0; yCell < Height; yCell++)
+                    if (CellValues[z][xCell, yCell])
+                        key++;
+
+                if (progressive)
+                    Synthesizer.Play(key, 1, (short)ChordProgression[_CellularAutomata[0].Iterations % _CellularAutomata[0].Repeat]);
+                else
+                    Synthesizer.Play(key, 1, 0);
+            }
+            else
+            {
+                int i = Numbers.Zero;
+
+                for (short yCell = 0; yCell < Height; yCell++)
+                    if (CellValues[z][xCell, yCell])
+                        i++;
+
+                for (short yCell = 0; yCell < Height; yCell++)
+                    if (CellValues[z][xCell, yCell])
+                        if (progressive)
+                            Synthesizer.Play((short)(Height - 1 - yCell), i,
+                            (short)ChordProgression[_CellularAutomata[0].Iterations % _CellularAutomata[0].Repeat]);
+                        else
+                            Synthesizer.Play((short)(Height - 1 - yCell), i, 0);
+            }
+
+            //if ((xCell % Width == 0) || (xCell % ((double)Width / 2) == 0))
+            //s += xCell + ": Kick";
+
+            //Console.WriteLine(s);
+        }
+
+        /// <summary>
+        /// remove a grid
+        /// </summary>
+        private void RemoveGrid()
+        {
+            NumberOfGrids--;
+            if (NumberOfGrids == 0)
+            {
+                if (Playing)
+                {
+                    Metronome.Stop();
+                    Playing = false;
+                    B_Play.SetImageBitmap(PlayBitmap);
+                }
+
+                CurrentColumn = 0;
+
+                B_Play.Visibility = ViewStates.Gone;
+                B_Synth.Visibility = ViewStates.Gone;
+                B_Add.Visibility = ViewStates.Gone;
+                B_Remove.Visibility = ViewStates.Gone;
+                B_Progressive.Visibility = ViewStates.Gone;
+                GridLayouts[0].Visibility = ViewStates.Gone;
+
+                TV_DrawAGrid.Visibility = ViewStates.Visible;
+                V_Overlay.Visibility = ViewStates.Visible;
+
+                _CellularAutomata = null;
+                CellValues = null;
+            }
+            else
+            {
+                CurrentColumn %= Width;
+
+                _CellularAutomata.RemoveAt(NumberOfGrids);
+                CellValues.RemoveAt(NumberOfGrids);
+                
+                if (GridWiderThanScreen)
+                //grid is wider than screen
+                {
+                    GridPixelHeight *= 2;
+
+                    GridX = 0;
+                    GridY = (Resolution.Y - GridPixelHeight) / 2;
+
+                    GridLayouts[0].SetX(GridX);
+                    GridLayouts[0].SetY(GridY);
+                    LayoutParams layoutParams = GridLayouts[0].LayoutParameters;
+                    layoutParams.Width = -1;
+                    layoutParams.Height = GridPixelHeight;
+                    GridLayouts[0].LayoutParameters = layoutParams;
+
+                    CellMagnitude = (int)Math.Ceiling((decimal)Resolution.X / Width);
+                }
+                else
+                //grid is thinner than screen
+                {
+                    GridPixelWidth *= 2;
+
+                    GridX = (Resolution.X - GridPixelWidth) / 2;
+                    GridY = 0;
+
+                    GridLayouts[0].SetX(GridX);
+                    GridLayouts[0].SetY(GridY);
+                    LayoutParams layoutParams = GridLayouts[0].LayoutParameters;
+                    layoutParams.Width = GridPixelWidth;
+                    layoutParams.Height = -1;
+                    GridLayouts[0].LayoutParameters = layoutParams;
+
+                    CellMagnitude = (int)Math.Ceiling((decimal)Resolution.Y / Height);
+                }
+
+                GridLayouts[0].RemoveAllViews();
+
+                LayoutParams gridCellLayoutParams = new LayoutParams(CellMagnitude, CellMagnitude);
+                
+                //draw grid
+                for (int yCell = 0; yCell < Height; yCell++)
+                {
+                    for (int xCell = 0; xCell < Width; xCell++)
+                    {
+                        //define cell
+                        ImageView cell = new ImageView(this);
+                        cell.SetTag(Resource.String.cellOn, null);
+                        cell.SetTag(Resource.String.cellX, xCell);
+                        cell.SetTag(Resource.String.cellY, yCell);
+                        cell.Touch += new EventHandler<TouchEventArgs>(ToggleCell);
+                        if (CellValues[0][xCell, yCell])
+                            cell.SetImageBitmap(ActiveCellBitmap);
+                        else
+                            cell.SetImageBitmap(InactiveCellBitmap);
+                        cell.LayoutParameters = gridCellLayoutParams;
+                        GridLayouts[0].AddView(cell);
                     }
                 }
 
-                new System.Threading.ManualResetEvent(false).WaitOne(1000);
-                //System.Threading.Thread.Sleep(1000);//where x is the time in seconds for which you want app to wait
-                synthesizer.Stop();
+                //define column count
+                GridLayouts[0].ColumnCount = Width;
+
+                GridLayouts[1].Visibility = ViewStates.Gone;
+
+                B_Add.Visibility = ViewStates.Visible;
             }
+        }
+
+        /// <summary>
+        /// add a grid
+        /// </summary>
+        private void AddGrid()
+        {
+            if (NumberOfGrids == 1)
+            {
+                B_Add.Visibility = ViewStates.Gone;
+            }
+
+            //get first or second grid accordingly
+            int index = (int)Math.Ceiling((decimal)NumberOfGrids / 2) - 1;
+
+            if (_CellularAutomata == null)
+                InitiateCellularAutomata();
+
+            bool[,] newGrid = (bool[,])CellValues[0].Clone();
+            CellValues.Add(newGrid);
+            _CellularAutomata.Add(new CellularAutomata<LangtonsAnt>(
+                new CircularArray2D<bool>((bool[,])newGrid.Clone()))
+            {
+                Iterations = _CellularAutomata[0].Iterations
+            });
+
+            LayoutParams layoutParams = GridLayouts[0].LayoutParameters;
+
+            //shrink cells
+            CellMagnitude /= 2;
+
+            if (GridWiderThanScreen)
+            //grid is wider than screen
+            //stack grids atop eachother
+            {
+                GridPixelHeight /= 2;
+
+                layoutParams.Width = Resolution.X / 2;
+                layoutParams.Height = GridPixelHeight;
+
+                GridY = (Resolution.Y - GridPixelHeight) / 2;
+
+                GridLayouts[0].SetY(GridY);
+                GridLayouts[0].LayoutParameters = layoutParams;
+
+                layoutParams = GridLayouts[NumberOfGrids].LayoutParameters;
+                GridLayouts[NumberOfGrids].SetX(Resolution.X / 2);
+                GridLayouts[NumberOfGrids].SetY(GridY);
+                layoutParams.Width = Resolution.X / 2;
+                layoutParams.Height = GridPixelHeight;
+                GridLayouts[NumberOfGrids].LayoutParameters = layoutParams;
+            }
+            else
+            //grid is thinner than screen
+            //stack grids beside eachother
+            {
+                GridPixelWidth /= 2;
+
+                layoutParams.Width = GridPixelWidth;
+                layoutParams.Height = Resolution.Y / 2;
+
+                GridX = (Resolution.X - GridPixelWidth) / 2;
+
+                GridLayouts[0].SetX(GridX * 2);
+                GridLayouts[0].LayoutParameters = layoutParams;
+
+                layoutParams = GridLayouts[NumberOfGrids].LayoutParameters;
+                GridLayouts[NumberOfGrids].SetX(GridX);
+                GridLayouts[NumberOfGrids].SetY(Resolution.Y / 2);
+                layoutParams.Width = GridPixelWidth;
+                layoutParams.Height = Resolution.Y / 2;
+                GridLayouts[NumberOfGrids].LayoutParameters = layoutParams;
+            }
+
+
+            NumberOfGrids++;
+
+
+            //draw grid
+            for (int z = 0; z < NumberOfGrids; z++)
+            {
+                GridLayouts[z].RemoveAllViews();
+                LayoutParams gridCellLayoutParams = new LayoutParams(CellMagnitude, CellMagnitude);
+                Console.WriteLine("{0}: X: {1}, width: {2}. Y: {3}, height: {4}", z, GridLayouts[z].GetX(), layoutParams.Width, GridLayouts[z].GetY(), layoutParams.Height);
+                for (int yCell = 0; yCell < Height; yCell++)
+                {
+                    for (int xCell = 0; xCell < Width; xCell++)
+                    {
+                        //define cell
+                        ImageView cell = new ImageView(this);
+                        if (CellValues[z][xCell, yCell])
+                        {
+                            cell.SetTag(Resource.String.cellOn, true);
+                            cell.SetImageBitmap(ActiveCellBitmap);
+                        }
+                        else
+                        {
+                            cell.SetTag(Resource.String.cellOn, null);
+                            cell.SetImageBitmap(InactiveCellBitmap);
+                        }
+                        cell.SetTag(Resource.String.cellX, xCell);
+                        cell.SetTag(Resource.String.cellY, yCell);
+                        cell.SetTag(Resource.String.cellZ, z);
+                        cell.Touch += new EventHandler<TouchEventArgs>(ToggleCell);
+                        cell.LayoutParameters = gridCellLayoutParams;
+                        GridLayouts[z].AddView(cell);
+                    }
+                }
+
+                GridLayouts[z].Visibility = ViewStates.Visible;
+
+                //define column count
+                GridLayouts[z].ColumnCount = Width;
+            }
+        }
+
+        /// <summary>
+        /// highlight the note being played
+        /// </summary>
+        /// <param name="currentColumn">the column to highlight</param>
+        private void Highlight(short currentColumn)
+        {
+            for (int y = 0; y < Height; y++)
+            {
+                //un-highlight previous column
+
+                int x = currentColumn - 1;
+                if (x == -1)
+                {
+                    x = (Width * NumberOfGrids) - 1;
+                }
+
+                int z = 0;
+
+                //determine grid
+                while (x >= Width)
+                {
+                    z++;
+                    x -= Width;
+                }
+
+                ImageView cell = (ImageView)GridLayouts[z].GetChildAt((y * Width) + x);
+
+                if (CellValues[z][x, y])
+                    SetImage(cell, ActiveCellBitmap);
+
+                //highlight current column
+
+                x = currentColumn;
+
+                z = 0;
+
+                //determine grid
+                while (x >= Width)
+                {
+                    z++;
+                    x -= Width;
+                }
+
+                cell = (ImageView)GridLayouts[z].GetChildAt((y * Width) + x);
+
+                if (CellValues[z][x, y])
+                    SetImage(cell, PlayingCellBitmap);
+            }
+        }
+
+        #region async
+        /// <summary>
+        /// metronome tick event
+        /// play a column of the grid
+        /// </summary>
+        /// <param name="sender">sender</param>
+        /// <param name="e">event arguments</param>
+        public void Tick(object sender, ElapsedEventArgs e)
+        {
+            //string s = "-- TICK REPORT --";
+            //s += "\nCurrent Column: " + CurrentColumn;
+            if (CurrentColumn == Width * NumberOfGrids)
+            {
+                //s += "\n\nITERATING\n\nBEFORE";
+                //for (int z = 0; z < NumberOfGrids; z++)
+                //{
+                //    s += "\nGrid " + z;
+                //    for (int y = 0; y<Height; y++)
+                //    {
+                //        s += "\n";
+                //        for (int x = 0; x<Width; x++)
+                //        {
+                //            s += CellValues[z][x, y]?"1":"0";
+                //        }
+                //    }
+
+                //    s += "CA Iterations:" + _CellularAutomata[z].Iterations;
+                //}
+
+                CurrentColumn = Numbers.Zero;
+                for (int z = 0; z < NumberOfGrids; z++)
+                    CellValues[z] = _CellularAutomata[z].Iterate();
+                SetGrids(CellValues);
+
+                //s += "\n\nAFTER";
+                //for (int z = 0; z < NumberOfGrids; z++)
+                //{
+                //    s += "\nGrid " + z;
+                //    for (int y = 0; y < Height; y++)
+                //    {
+                //        s += "\n";
+                //        for (int x = 0; x < Width; x++)
+                //        {
+                //            s += CellValues[z][x, y] ? "1" : "0";
+                //        }
+                //    }
+                //}
+            }
+
+            //Console.WriteLine(s);
+
+            Synthesizer.Stop();
+
+            Highlight(CurrentColumn);
+            PlayColumn(CurrentColumn);
+
+            CurrentColumn++;
+
+            if (_CellularAutomata[Numbers.Zero].Iterations % Numbers.Fifteen == 0)
+                CalculateChordProgression();
+        }
+
+        /// <summary>
+        /// calculate chord progression
+        /// </summary>
+        public void CalculateChordProgression()
+        {
+            //prepare chord progression
+            if (chordProgressionGenerator == null)
+            {
+                chordProgressionGenerator = new CellularAutomata<Rule30>(new CircularArray2D<bool>(CellValues[Numbers.Zero]));
+                chordProgressionGenerator.Repeat = Numbers.One;
+            }
+
+            string s = "Chord Progression: ";
+
+            ChordProgression = new int[_CellularAutomata[Numbers.Zero].Repeat];
+
+            for (int z = 0; z < _CellularAutomata[Numbers.Zero].Repeat; z++)
+            {
+                for (int x = 0; x < _CellularAutomata[Numbers.Zero].Repeat; x++)
+                    for (int y = 0; y < Numbers.Twelve; y++)
+                        if (chordProgressionGenerator[x, y])
+                            ChordProgression[z]= ChordProgression[z] + y + (x*10);
+                chordProgressionGenerator.Iterate();
+
+                ChordProgression[z] %= Numbers.TwentyFour;
+
+                ChordProgression[z] -= Numbers.Twelve;
+
+                s += ChordProgression[z] + " ";
+            }
+
+            Console.WriteLine(s);
         }
         #endregion
     }
 }
-
