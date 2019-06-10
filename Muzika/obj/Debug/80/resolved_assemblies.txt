@@ -1,0 +1,12 @@
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\Muzika.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\Java.Interop.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\Mono.Android.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\mscorlib.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\MuzikaClasses.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\System.Core.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\System.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\System.Xml.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\System.Net.Http.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\System.Runtime.Serialization.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\System.ServiceModel.Internals.dll
+C:\Users\meli\Dropbox\DISSERTATION\Muzika\Muzika\obj\Debug\80\android\assets\Mono.Security.dll
